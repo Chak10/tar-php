@@ -79,6 +79,79 @@ class TAR {
         fwrite($f, pack('a1024', ''));
     }
     
+    protected static function tar_compress($name_tar, $type = "gz", $index = 9) {
+        $temp = dirname($name_tar) . DIRECTORY_SEPARATOR . "temp" . microtime(true) . ".tar";
+        $temp_dir = dirname($name_tar) . DIRECTORY_SEPARATOR . "temp";
+        switch ($type) {
+            case 'gz':
+                $name = $name_tar . '.gz';
+                if (!file_exists($name))
+                    return file_put_contents($name, gzencode(file_get_contents($name_tar), $index, FORCE_GZIP)) && unlink($name_tar);
+                self::gz_decompress($name, $temp);
+                self::overvrite_comp($temp, $temp_dir, $name_tar);
+                return file_put_contents($name, gzencode(file_get_contents($name_tar), $index, FORCE_GZIP)) && unlink($name_tar);
+                break;
+            case 'bz2':
+                $name = $name_tar . '.bz2';
+                if (!file_exists($name))
+                    return file_put_contents($name_tar . '.bz2', bzcompress(file_get_contents($name_tar), $index)) && unlink($name_tar);
+                self::bz2_decompress($name, $temp);
+                self::overvrite_comp($temp, $temp_dir, $name_tar);
+                return file_put_contents($name_tar . '.bz2', bzcompress(file_get_contents($name_tar), $index)) && unlink($name_tar);
+                break;
+            case 'deflate':
+                $name = $name_tar . '.gz';
+                if (!file_exists($name))
+                    return file_put_contents($name_tar . '.gz', gzencode(file_get_contents($name_tar), $index, FORCE_DEFLATE)) && unlink($name_tar);
+                self::gz_decompress($name, $temp);
+                self::overvrite_comp($temp, $temp_dir, $name_tar);
+                return file_put_contents($name_tar . '.gz', gzencode(file_get_contents($name_tar), $index, FORCE_DEFLATE)) && unlink($name_tar);
+                break;
+        }
+        return false;
+    }
     
+    protected static function overvrite_comp($temp, $temp_dir, $name_tar) {
+        self::extract_tar($temp, $temp_dir, true);
+        if (file_exists($temp))
+            unlink($temp);
+        self::extract_tar($name_tar, $temp_dir, true);
+        if (file_exists($name_tar))
+            unlink($name_tar);
+        self::create_tar($name_tar, $temp_dir);
+        self::delete_temp($temp_dir);
+    }
+    
+    protected static function gz_size($file_gz) {
+        $file = fopen($file_gz, "rb");
+        fseek($file, -4, SEEK_END);
+        $buf = fread($file, 4);
+        $size = unpack("V", $buf);
+        $size = end($size);
+        fclose($file);
+        return $size;
+    }
+    
+    protected static function gz_decompress($name, $temp) {
+        $fh = gzopen($name, "r");
+        $contents = gzread($fh, self::gz_size($name));
+        gzclose($fh);
+        return file_put_contents($temp, $contents);
+    }
+    
+    protected static function bz2_decompress($name, $temp) {
+        $decomp_file = '';
+        $fh = bzopen($name, 'r');
+        do {
+            $decomp_file .= $buffer = bzread($fh, 4096);
+            if ($buffer === FALSE)
+                $sp = true;
+            if (bzerror($fh) !== 0)
+                $sp = true;
+            $sp = feof($fh);
+        } while (!$sp);
+        bzclose($fh);
+        file_put_contents($temp, $decomp_file);
+    }
 }
 ?>
