@@ -153,5 +153,16 @@ class TAR {
         bzclose($fh);
         file_put_contents($temp, $decomp_file);
     }
+    protected static function create_tar($tar, $dir) {
+		try {
+			$phar = new PharData($tar);
+			$phar->buildFromDirectory($dir);
+		}
+		catch (Exception $e) {
+			return $e->getMessage();
+		}
+		return true;
+	}
+    
 }
 ?>
